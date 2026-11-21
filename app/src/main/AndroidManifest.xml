@@ -3,10 +3,14 @@
 
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature
         android:name="android.hardware.nfc"
         android:required="true" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:allowBackup="false"
@@ -29,5 +33,20 @@
             android:exported="false"
             android:label="@string/nextcloud_title"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ReferenceListActivity"
+            android:exported="false"
+            android:label="@string/reference_title"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- QR-Scanner, darf sich frei drehen (Standard der Bibliothek ist nur Querformat). -->
+        <activity
+            android:name=".PortraitCaptureActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:stateNotNeeded="true"
+            android:theme="@style/zxing_CaptureTheme"
+            android:windowSoftInputMode="stateAlwaysHidden" />
     </application>
 </manifest>

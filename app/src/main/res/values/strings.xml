@@ -1,13 +1,24 @@
 <resources>
     <string name="app_name">NFC UID Logger</string>
-    <string name="hint_scan">Karte an die Rückseite des Handys halten.</string>
+    <string name="hint_scan">Schritt 1: Karte an die Rückseite des Handys halten.</string>
     <string name="no_nfc">Dieses Gerät hat kein NFC.</string>
     <string name="nfc_off">NFC ist ausgeschaltet. Bitte in den Einstellungen aktivieren.</string>
-    <string name="read_uid">Gelesen: %1$s</string>
     <string name="write_failed">Logfile konnte nicht geschrieben werden: %1$s</string>
     <string name="log_title">Log (neueste zuerst)</string>
     <string name="log_empty">Noch keine Karten gelesen.</string>
     <string name="log_path">Logfile: %1$s</string>
+
+    <string name="uid_valid">Karte %1$s ist gültig. Schritt 2: Bitte jetzt den QR-Code scannen.</string>
+    <string name="uid_invalid">Karte %1$s ist UNGÜLTIG. Bitte eine andere Karte scannen.</string>
+    <string name="scan_qr_prompt">QR-Code in den Rahmen halten</string>
+    <string name="qr_cancelled">QR-Scan abgebrochen. Es wurde nichts gespeichert. Bitte Karte erneut scannen.</string>
+    <string name="logged">Gespeichert: %1$s / %2$s. Nächste Karte bitte.</string>
+
+    <string name="reference_list">Referenzliste</string>
+    <string name="reference_title">Referenzliste</string>
+    <string name="reference_help">Erlaubte Karten-UIDs, eine pro Zeile. * steht für beliebig viele Zeichen, ? für genau eine Hex-Ziffer. Doppelpunkte und Groß-/Kleinschreibung sind egal. Zeilen mit # sind Kommentare. Beispiele: 04:A1:B2:C3 oder 04:A1:* oder *</string>
+    <string name="reference_hint">04:A1:B2:C3\n04:A1:*</string>
+    <string name="reference_saved">Gespeichert (%1$d Einträge).</string>
 
     <string name="upload_now">Jetzt hochladen</string>
     <string name="settings">Nextcloud-Einstellungen</string>
@@ -17,7 +28,7 @@
     <string name="upload_failed">Nextcloud-Upload fehlgeschlagen: %1$s. Das Log ist weiterhin auf dem Handy gespeichert.</string>
 
     <string name="nextcloud_title">Nextcloud-Upload</string>
-    <string name="nextcloud_help">Nach jeder gelesenen Karte wird die komplette Logdatei (nfc_log.csv) in dieses Konto und diesen Ordner hochgeladen. Verwende ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), nicht dein Hauptpasswort.</string>
+    <string name="nextcloud_help">Nach jedem Scan wird die komplette Logdatei (nfc_log.csv) in dieses Konto und diesen Ordner hochgeladen. Verwende ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), nicht dein Hauptpasswort.</string>
     <string name="hint_server">Serveradresse (https://cloud.example.com)</string>
     <string name="hint_user">Benutzername</string>
     <string name="hint_password">App-Passwort</string>
