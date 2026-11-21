@@ -121,7 +121,13 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         // Während auf den QR-Code gewartet wird, werden weitere Karten ignoriert.
         if (pendingUid != null) return;
 
-        final String uid = toHex(tag.getId());
+        byte[] tagId = tag.getId();
+        if (tagId == null) {
+            runOnUiThread(() -> statusView.setText(R.string.uid_unavailable));
+            sounds.fail();
+            return;
+        }
+        final String uid = toHex(tagId);
 
         if (!ReferenceList.isValid(this, uid)) {
             sounds.fail();

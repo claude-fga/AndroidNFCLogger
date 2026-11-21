@@ -3,6 +3,7 @@
     <string name="hint_scan">Schritt 1: Karte an die Rückseite des Handys halten.</string>
     <string name="no_nfc">Dieses Gerät hat kein NFC.</string>
     <string name="nfc_off">NFC ist ausgeschaltet. Bitte in den Einstellungen aktivieren.</string>
+    <string name="uid_unavailable">Diese Karte hat keine lesbare UID.</string>
     <string name="write_failed">Logfile konnte nicht geschrieben werden: %1$s</string>
     <string name="log_title">Log (neueste zuerst)</string>
     <string name="log_empty">Noch keine Karten gelesen.</string>
