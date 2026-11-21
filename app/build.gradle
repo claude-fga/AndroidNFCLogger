@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.claudefga.nfcuidlogger'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.claudefga.nfcuidlogger'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // WebDAV braucht MKCOL/PROPFIND, was HttpURLConnection nicht senden kann.
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}
