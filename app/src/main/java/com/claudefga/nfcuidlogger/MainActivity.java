@@ -7,6 +7,9 @@ import android.nfc.Tag;
 import android.os.Bundle;
 import android.widget.TextView;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -16,37 +19,66 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Liest bei geöffneter App die UID jeder NFC-Karte, hängt sie ans Logfile an
- * und lädt das komplette Logfile danach zu Nextcloud hoch (falls eingerichtet).
+ * Ablauf:
+ * 1. Warten auf eine NFC-Karte. Die UID wird mit der Referenzliste verglichen
+ *    (Platzhalter erlaubt). Gültig = Check-Ton, ungültig = Fehlerton.
+ * 2. Nach einer gültigen Karte öffnet sich der QR-Scanner.
+ * 3. UID und QR-Inhalt werden zusammen als eine Zeile ins Log geschrieben
+ *    (und zu Nextcloud hochgeladen, falls eingerichtet). Danach wartet die
+ *    App wieder auf die nächste Karte.
+ *
+ * Logformat: "yyyy-MM-dd HH:mm:ss;UID;STATUS;QR" mit STATUS = OK oder INVALID
+ * (bei INVALID ist QR leer).
  */
 public class MainActivity extends Activity implements NfcAdapter.ReaderCallback {
 
+    private static final String STATE_PENDING_UID = "pending_uid";
+    private static final String STATUS_OK = "OK";
+    private static final String STATUS_INVALID = "INVALID";
+
     private NfcAdapter nfc;
     private LogStore store;
+    private SoundPlayer sounds;
     private TextView statusView;
     private TextView uploadView;
     private TextView logView;
     private final ExecutorService uploadExecutor = Executors.newSingleThreadExecutor();
+
+    /** Gesetzt, solange nach einer gültigen Karte auf den QR-Code gewartet wird. */
+    private volatile String pendingUid;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if (savedInstanceState != null) {
+            pendingUid = savedInstanceState.getString(STATE_PENDING_UID);
+        }
+
         statusView = findViewById(R.id.status_text);
         uploadView = findViewById(R.id.upload_text);
         logView = findViewById(R.id.log_text);
 
         store = new LogStore(this);
+        sounds = new SoundPlayer();
         ((TextView) findViewById(R.id.path_text))
                 .setText(getString(R.string.log_path, store.file().getAbsolutePath()));
 
         findViewById(R.id.upload_button).setOnClickListener(v -> uploadAsync());
         findViewById(R.id.settings_button).setOnClickListener(
                 v -> startActivity(new Intent(this, SettingsActivity.class)));
+        findViewById(R.id.reference_button).setOnClickListener(
+                v -> startActivity(new Intent(this, ReferenceListActivity.class)));
 
         nfc = NfcAdapter.getDefaultAdapter(this);
         refreshLog();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(STATE_PENDING_UID, pendingUid);
     }
 
     @Override
@@ -80,25 +112,100 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     protected void onDestroy() {
         super.onDestroy();
         uploadExecutor.shutdown();
+        sounds.release();
     }
 
     /** Läuft auf einem Hintergrund-Thread. */
     @Override
     public void onTagDiscovered(Tag tag) {
+        // Während auf den QR-Code gewartet wird, werden weitere Karten ignoriert.
+        if (pendingUid != null) return;
+
         final String uid = toHex(tag.getId());
-        final String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.GERMANY).format(new Date());
-        try {
-            store.append(time + ";" + uid);
-        } catch (IOException e) {
-            final String message = e.getMessage() != null ? e.getMessage() : e.toString();
-            runOnUiThread(() -> statusView.setText(getString(R.string.write_failed, message)));
+
+        if (!ReferenceList.isValid(this, uid)) {
+            sounds.fail();
+            try {
+                store.append(buildLine(now(), uid, STATUS_INVALID, ""));
+            } catch (IOException e) {
+                showWriteError(e);
+                return;
+            }
+            runOnUiThread(() -> {
+                statusView.setText(getString(R.string.uid_invalid, uid));
+                refreshLog();
+            });
+            uploadAsync();
             return;
         }
+
+        sounds.ok();
+        pendingUid = uid;
         runOnUiThread(() -> {
-            statusView.setText(getString(R.string.read_uid, uid));
-            refreshLog();
+            statusView.setText(getString(R.string.uid_valid, uid));
+            startQrScan();
         });
+    }
+
+    private void startQrScan() {
+        new IntentIntegrator(this)
+                .setCaptureActivity(PortraitCaptureActivity.class)
+                .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+                .setPrompt(getString(R.string.scan_qr_prompt))
+                .setBeepEnabled(false)
+                .setOrientationLocked(false)
+                .initiateScan();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (result == null) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+
+        final String uid = pendingUid;
+        pendingUid = null;
+        if (uid == null) return;
+
+        final String qr = result.getContents();
+        if (qr == null) {
+            statusView.setText(R.string.qr_cancelled);
+            return;
+        }
+
+        try {
+            store.append(buildLine(now(), uid, STATUS_OK, qr));
+        } catch (IOException e) {
+            showWriteError(e);
+            return;
+        }
+        statusView.setText(getString(R.string.logged, uid, qr));
+        refreshLog();
         uploadAsync();
+    }
+
+    private void showWriteError(IOException e) {
+        final String message = e.getMessage() != null ? e.getMessage() : e.toString();
+        runOnUiThread(() -> statusView.setText(getString(R.string.write_failed, message)));
+    }
+
+    private static String now() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.GERMANY).format(new Date());
+    }
+
+    private static String buildLine(String time, String uid, String status, String qr) {
+        return time + ";" + uid + ";" + status + ";" + csv(qr);
+    }
+
+    /** Zeilenumbrüche werden zu Leerzeichen, Semikolon/Anführungszeichen werden CSV-konform maskiert. */
+    private static String csv(String value) {
+        String s = value.replace("\r", " ").replace("\n", " ");
+        if (s.contains(";") || s.contains("\"")) {
+            s = "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
     }
 
     private static String toHex(byte[] id) {
